@@ -1,6 +1,11 @@
 import { Router } from "express";
-import { registerUser } from "../controllers/user.controller.js";
+import {
+  registerUser,
+  loginUser,
+  logoutUser,
+} from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 // const router = Router();
 const userRouter = Router();
@@ -12,6 +17,11 @@ userRouter.route("/register").post(
   ]),
   registerUser
 );
+
+userRouter.route("/login").post(loginUser);
+
+// secured routes : we are calling it that coz only the authenticated users can access them
+userRouter.route("/logout").post(verifyJWT, logoutUser); // middlewares ka game he ye hai ke req fulfil hone se pehle middle main in between aik functionality execute karwalo
 
 // export default router;
 export default userRouter;
