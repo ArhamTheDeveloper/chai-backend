@@ -1,8 +1,9 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -57,9 +58,23 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   //   Handling/checking images/files
-  const avatarLocalPath = req.files?.avatar[0]?.path; //req.files ka access hamain multer deta hai
+  // const avatarLocalPath = req.files?.avatar[0]?.path; this method is not good coz yes its checking for avatar file but the error message won't be the one we set coz it will be ust undefined.
   // console.log(req.files?.avatar) ye main ne apni understanding ke liye kiya tha
-  // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+  let avatarLocalPath;
+
+  if (
+    req.files &&
+    Array.isArray(req.files.avatar) &&
+    req.files.avatar.length > 0
+  ) {
+    avatarLocalPath = req.files.avatar[0].path;
+  }
+
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar file is required");
+  }
+
   let coverImageLocalPath;
   if (
     req.files &&
@@ -67,10 +82,6 @@ const registerUser = asyncHandler(async (req, res) => {
     req.files.coverImage.length > 0
   ) {
     coverImageLocalPath = req.files.coverImage[0].path;
-  }
-
-  if (!avatarLocalPath) {
-    throw new ApiError(400, "Avatar file is required");
   }
 
   //   Uploading to cloudinary
@@ -109,6 +120,7 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   /* Steps To Solve this Problem
       Get user data from frontend.
+      validation - fields should not be empty
       find user via checking the user's username or email
       check user's password
       Once validated generate access token and refresh token.
@@ -120,7 +132,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
 
   if (!(username || email)) {
-    throw new ApiError(400, "username or password is required");
+    throw new ApiError(400, "username or email is required");
   }
 
   const user = await User.findOne({
@@ -193,4 +205,87 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logged Out"));
 });
 
-export { registerUser, loginUser, logoutUser };
+// My version without the use of middleware this isn't that good preferred way is the sir's method mainly coz access token is used for authentication.
+// const logoutUser = asyncHandler(async (req, res) => {
+//   const token =
+//     req.cookies?.refreshToken ||
+//     req.body.refreshToken
+
+//   if (!token) {
+//     throw new ApiError(401, "Unauthorized request");
+//   }
+
+//   await User.findOneAndUpdate(
+//     { refreshToken: token },
+//     {
+//       $set: {
+//         refreshToken: undefined,
+//       },
+//     },
+//     {
+//       new: true,
+//     }
+//   );
+
+//   const options = {
+//     httpOnly: true,
+//     secure: true,
+//   };
+
+//   return res
+//     .status(200)
+//     .clearCookie("accessToken", options)
+//     .clearCookie("refreshToken", options)
+//     .json(new ApiResponse(200, {}, "User logged Out"));
+// });
+
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const incomingRefreshToken =
+    req.cookies?.refreshToken || req.body.refreshToken;
+
+  if (!incomingRefreshToken) {
+    throw new ApiError(401, "unauthorized request");
+  }
+
+  try {
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+  
+    const user = await User.findById(decodedToken?._id);
+  
+    if (!user) {
+      throw new ApiError(401, "Invalid refresh token");
+    }
+  
+    if (incomingRefreshToken !== user?.refreshToken) {
+      throw new ApiError(401, "Refresh token is expired or used");
+    }
+  
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+  
+    const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(
+      user._id
+    );
+  
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newRefreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          { accessToken, refreshToken: newRefreshToken },
+          "Access Token refreshed"
+        )
+      );
+  } catch (error) {
+    throw new ApiError(401,error?.message || "Invalid Refresh Token")
+  }
+});
+
+export { registerUser, loginUser, logoutUser,refreshAccessToken };

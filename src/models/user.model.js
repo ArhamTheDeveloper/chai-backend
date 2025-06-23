@@ -25,7 +25,7 @@ const userSchema = new Schema(
       trim: true,
       index: true,
     },
-    avatar: {
+    avatar: { 
       type: String, // cloudinary url
       required: true,
     },
@@ -50,6 +50,7 @@ const userSchema = new Schema(
 );
 
 // bcrypt Password Encrypt Done
+// pre is our middleware / hook / function in mongoose there are many others too
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
@@ -58,6 +59,7 @@ userSchema.pre("save", async function (next) {
 });
 
 // bcrypt Checking password done
+// .methods is an object in the schema provided by mongoose in which we can add our own custom methods
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
@@ -65,7 +67,7 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 // Using jwt to generate tokens
 userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
-    {
+    { //this is the payload/data we wanna store in the token
       _id: this._id,
       email: this.email,
       username: this.username,

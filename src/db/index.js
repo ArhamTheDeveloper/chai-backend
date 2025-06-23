@@ -11,9 +11,27 @@ const connectDB = async () => {
       `\n MongoDB connected !! DB HOST: ${connectionInstance.connection.host}`
     );
   } catch (error) {
-    console.log("MONGODB connection FAILED ", error);
+    console.error("MongoDB connection failed:\n", error.message || error);
     process.exit(1);
   }
 };
+
+// Above function just with promises
+// const connectDB = () => {
+//   return mongoose
+//     .connect(`${process.env.MONGODB_URI}/${DB_NAME}`)
+//     .then((connectionInstance) => {
+//       console.log(
+//         `\n MongoDB connected !! DB HOST: ${connectionInstance.connection.host}`
+//       );
+//       return connectionInstance;
+//     })
+//     .catch((error) => {
+//       console.error("MongoDB connection failed:\n", error.message || error);
+//       process.exit(1);
+//     });
+// };
+
+
 
 export default connectDB;
