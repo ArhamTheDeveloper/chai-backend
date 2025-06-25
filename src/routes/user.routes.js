@@ -30,8 +30,8 @@ router.route("/login").post(loginUser);
 // secured routes : we are calling it that coz only the authenticated users can access them
 router.route("/logout").post(verifyJWT, logoutUser); // middlewares ka game he ye hai ke req fulfil hone se pehle middle main in between aik functionality execute karwalo
 router.route("/refresh-token").post(refreshAccessToken);
-router.route("/change-password").post(verifyJWT, changeCurrentPassword);
 router.route("/current-user").get(verifyJWT, getCurrentUser);
+router.route("/change-password").patch(verifyJWT, changeCurrentPassword);
 router.route("/update-account").patch(verifyJWT, updateAccountDetails);
 router
   .route("/avatar")
@@ -42,5 +42,4 @@ router
 router.route("/c/:username").get(verifyJWT, getUserChannelProfile);
 router.route("/history").get(verifyJWT, getWatchHistory);
 
-// export default router;
-export default userRouter;
+export default router;
