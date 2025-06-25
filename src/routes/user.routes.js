@@ -3,14 +3,21 @@ import {
   registerUser,
   loginUser,
   logoutUser,
-  refreshAccessToken
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage,
+  getUserChannelProfile,
+  getWatchHistory,
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
-const userRouter = Router();
+const router = Router();
 
-userRouter.route("/register").post(
+router.route("/register").post(
   upload.fields([
     { name: "avatar", maxCount: 1 },
     { name: "coverImage", maxCount: 1 },
@@ -18,11 +25,22 @@ userRouter.route("/register").post(
   registerUser
 );
 
-userRouter.route("/login").post(loginUser);
+router.route("/login").post(loginUser);
 
 // secured routes : we are calling it that coz only the authenticated users can access them
-userRouter.route("/logout").post(verifyJWT, logoutUser); // middlewares ka game he ye hai ke req fulfil hone se pehle middle main in between aik functionality execute karwalo
-userRouter.route("/refresh-token").post(refreshAccessToken)
+router.route("/logout").post(verifyJWT, logoutUser); // middlewares ka game he ye hai ke req fulfil hone se pehle middle main in between aik functionality execute karwalo
+router.route("/refresh-token").post(refreshAccessToken);
+router.route("/change-password").post(verifyJWT, changeCurrentPassword);
+router.route("/current-user").get(verifyJWT, getCurrentUser);
+router.route("/update-account").patch(verifyJWT, updateAccountDetails);
+router
+  .route("/avatar")
+  .patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
+router
+  .route("/cover-image")
+  .patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
+router.route("/c/:username").get(verifyJWT, getUserChannelProfile);
+router.route("/history").get(verifyJWT, getWatchHistory);
 
 // export default router;
 export default userRouter;
