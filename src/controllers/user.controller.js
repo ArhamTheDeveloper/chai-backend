@@ -5,24 +5,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
-
-const generateAccessAndRefreshTokens = async (userId) => {
-  try {
-    const user = await User.findById(userId);
-    const accessToken = user.generateAccessToken();
-    const refreshToken = user.generateRefreshToken();
-
-    user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
-
-    return { accessToken, refreshToken };
-  } catch (error) {
-    throw new ApiError(
-      500,
-      "Something went wrong while generating refresh and access token"
-    );
-  }
-};
+import { generateAccessAndRefreshTokens } from "../services/token.service.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   // Steps for solving problem of registeringUser.
@@ -205,40 +188,6 @@ const logoutUser = asyncHandler(async (req, res) => {
     .clearCookie("refreshToken", options)
     .json(new ApiResponse(200, {}, "User logged Out"));
 });
-
-// My version of logout without the use of middleware this isn't that good preferred way is the sir's method mainly coz access token is used for authentication.
-// const logoutUser = asyncHandler(async (req, res) => {
-//   const token =
-//     req.cookies?.refreshToken ||
-//     req.body.refreshToken
-
-//   if (!token) {
-//     throw new ApiError(401, "Unauthorized request");
-//   }
-
-//   await User.findOneAndUpdate(
-//     { refreshToken: token },
-//     {
-//       $set: {
-//         refreshToken: undefined,
-//       },
-//     },
-//     {
-//       new: true,
-//     }
-//   );
-
-//   const options = {
-//     httpOnly: true,
-//     secure: true,
-//   };
-
-//   return res
-//     .status(200)
-//     .clearCookie("accessToken", options)
-//     .clearCookie("refreshToken", options)
-//     .json(new ApiResponse(200, {}, "User logged Out"));
-// });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
