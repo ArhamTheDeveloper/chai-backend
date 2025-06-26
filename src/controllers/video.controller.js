@@ -13,13 +13,12 @@ const getAllVideos = asyncHandler(async (req, res) => {
 });
 
 const publishAVideo = asyncHandler(async (req, res) => {
+  // TODO: get video, upload to cloudinary, create video
   const { title, description } = req.body;
 
   if ([title, description].some((field) => field?.trim() === "")) {
     throw new ApiError(400, "All fields are required");
   }
-
-  // TODO: get video, upload to cloudinary, create video
 
   let videoFileLocalPath;
   if (
@@ -71,8 +70,13 @@ const publishAVideo = asyncHandler(async (req, res) => {
 });
 
 const getVideoById = asyncHandler(async (req, res) => {
-  const { videoId } = req.params;
   //TODO: get video by id
+  const { videoId } = req.params;
+
+  // ✅ Check for valid ObjectId
+  if (!mongoose.isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid video ID format");
+  }
 
   const video = await Video.findById(videoId);
   if (!video) {
@@ -85,13 +89,47 @@ const getVideoById = asyncHandler(async (req, res) => {
 });
 
 const updateVideo = asyncHandler(async (req, res) => {
-  const { videoId } = req.params;
   //TODO: update video details like title, description, thumbnail
+  const { videoId } = req.params;
+  const { title, description } = req.body;
+
+  const thumbnailLocalPath = req.file?.path;
+
+  if (!thumbnailLocalPath) {
+    throw new ApiError(400, "Thumbnail file is missing");
+  }
+  const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
+
+  if (!mongoose.isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid video ID format");
+  }
+
+  const video = await Video.findByIdAndUpdate(
+    videoId,
+    {
+      $set: {
+        title,
+        description,
+        thumbnail: thumbnail.url,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video details updated successfully"));
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
-  const { videoId } = req.params;
   //TODO: delete video
+  const { videoId } = req.params;
+
+  if (!mongoose.isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid video ID format");
+  }
 
   await Video.deleteOne({ _id: videoId });
 
@@ -102,6 +140,10 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+
+  if (!mongoose.isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid video ID format");
+  }
 
   const video = await Video.findById(videoId);
 
