@@ -21,12 +21,12 @@ app.use(
 app.use(express.static("public"));
 app.use(cookieParser());
 
-
-// routes import 
+// routes import
 import userRouter from "./routes/user.routes.js";
-
+import videoRouter from "./routes/video.route.js";
 
 // routes declaration
-app.use("/api/v1/users",userRouter)
+app.use("/api/v1/users", userRouter);
+app.use("/api/v1/videos", videoRouter);
 
 export { app };
