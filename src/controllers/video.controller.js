@@ -73,6 +73,15 @@ const publishAVideo = asyncHandler(async (req, res) => {
 const getVideoById = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   //TODO: get video by id
+
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(400, "video does not exist");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "video fetched successfully"));
 });
 
 const updateVideo = asyncHandler(async (req, res) => {
@@ -83,10 +92,30 @@ const updateVideo = asyncHandler(async (req, res) => {
 const deleteVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   //TODO: delete video
+
+  await Video.deleteOne({ _id: videoId });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Video deleted successfully"));
 });
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+
+  const video = await Video.findById(videoId);
+
+  if (video.isPublished === false) {
+    video.isPublished = true;
+    video.save({ validateBeforeSave: false });
+  } else {
+    video.isPublished = false;
+    video.save({ validateBeforeSave: false });
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Publish status toggled Successfully"));
 });
 
 export {
