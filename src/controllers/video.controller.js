@@ -1,4 +1,4 @@
-import mongoose, { isValidObjectId } from "mongoose";
+import mongoose from "mongoose";
 import { Video } from "../models/video.model.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -8,8 +8,189 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { formatDuration } from "../utils/formatDuration.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
   //TODO: get all videos based on query, sort, pagination
+  const {
+    page = 1,
+    limit = 5,
+    query,
+    sortBy = "createdAt",
+    sortType = "asc",
+    userId,
+  } = req.query;
+
+  const pageNumber = parseInt(page);
+  const limitNumber = parseInt(limit);
+
+  if (
+    isNaN(pageNumber) ||
+    isNaN(limitNumber) ||
+    pageNumber < 1 ||
+    limitNumber < 1
+  ) {
+    throw new ApiError(400, "Page and limit must be positive integers.");
+  }
+
+  // Validate sortBy field to avoid unwanted fields being used
+  const allowedSortFields = ["createdAt", "views"]; // Add more as needed
+  const sortField = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
+  // Set sort order: 1 for ascending, -1 for descending
+  const sortOrder = sortType === "asc" ? 1 : -1;
+
+  // Build the base pipeline
+  const pipeline = [
+    {
+      $match: {
+        isPublished: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              fullName: 1,
+              email: 1,
+              avatar: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        owner: {
+          $first: "$owner",
+        },
+      },
+    },
+  ];
+
+  // getting all videos of a user based on userId query and other queries if there are any like sortBy, sortType, search query
+  if (userId) {
+    if (!mongoose.isValidObjectId(userId)) {
+      throw new ApiError(400, "Please provide a valid userId");
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(400, "No such user exists");
+    }
+
+    pipeline.push({
+      $match: {
+        "owner._id": new mongoose.Types.ObjectId(userId),
+      },
+    });
+
+    if (sortBy && sortType) {
+      pipeline.push({
+        $sort: {
+          [sortField]: sortOrder,
+        },
+      });
+    }
+
+    if (query) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { title: { $regex: query, $options: "i" } },
+            { description: { $regex: query, $options: "i" } },
+          ],
+        },
+      });
+    }
+
+    // Pagination
+    const skip = (pageNumber - 1) * limitNumber;
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limitNumber });
+
+    const videos = await Video.aggregate(pipeline);
+    res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          videos,
+          "All videos of the user fetched successfully"
+        )
+      );
+  } else if (query) {
+    // getting all videos according to the search query and other queries if there are any like sortBy, sortType
+    let videos = await Video.find({
+      $or: [
+        { title: { $regex: query, $options: "i" } },
+        {
+          description: { $regex: query, $options: "i" },
+        },
+      ],
+    });
+
+    if (!videos || videos.length === 0) {
+      throw new ApiError(404, "No videos available according to the query");
+    }
+
+    pipeline.push({
+      $match: {
+        $or: [
+          { title: { $regex: query, $options: "i" } },
+          { description: { $regex: query, $options: "i" } },
+        ],
+      },
+    });
+
+    if (sortBy && sortType) {
+      pipeline.push({
+        $sort: {
+          [sortField]: sortOrder,
+        },
+      });
+    }
+
+    // Pagination
+    const skip = (pageNumber - 1) * limitNumber;
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limitNumber });
+
+    videos = await Video.aggregate(pipeline);
+    res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          videos,
+          "Videos fetched according to the search query successfully"
+        )
+      );
+  } else {
+    // getting all videos and conditionally giving results based on query like sortBy, sortType
+
+    // Conditionally push $sort stage
+    if (sortBy && sortType) {
+      pipeline.push({
+        $sort: {
+          [sortField]: sortOrder,
+        },
+      });
+    }
+
+    // Pagination
+    const skip = (pageNumber - 1) * limitNumber;
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limitNumber });
+
+    const videos = await Video.aggregate(pipeline);
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, videos, "All videos fetched successfully"));
+  }
 });
 
 const publishAVideo = asyncHandler(async (req, res) => {
@@ -58,15 +239,19 @@ const publishAVideo = asyncHandler(async (req, res) => {
     owner: req.user._id,
   });
 
-  const createdVideo = await Video.findById(video._id);
+  // populate directly on the created document
+  const populatedVideo = await Video.findById(video._id).populate({
+    path: "owner",
+    select: "username fullName email avatar",
+  });
 
-  if (!createdVideo) {
+  if (!populatedVideo) {
     throw new ApiError(500, "Something went wrong while publishing the video");
   }
 
   return res
     .status(201)
-    .json(new ApiResponse(200, createdVideo, "Video published Successfully"));
+    .json(new ApiResponse(200, populatedVideo, "Video published successfully"));
 });
 
 const getVideoById = asyncHandler(async (req, res) => {
