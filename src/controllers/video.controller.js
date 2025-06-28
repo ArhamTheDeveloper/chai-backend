@@ -279,10 +279,6 @@ const updateVideo = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
 
   const thumbnailLocalPath = req.file?.path;
-
-  if (!thumbnailLocalPath) {
-    throw new ApiError(400, "Thumbnail file is missing");
-  }
   const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
 
   if (!mongoose.isValidObjectId(videoId)) {
@@ -295,7 +291,7 @@ const updateVideo = asyncHandler(async (req, res) => {
       $set: {
         title,
         description,
-        thumbnail: thumbnail.url,
+        thumbnail: thumbnail?.url,
       },
     },
     {
