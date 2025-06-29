@@ -42,17 +42,17 @@ const addComment = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Failed to create comment");
   }
 
-  const populatedComment = await Comment.find(comment._id)
-    .populate("owner", "username")
-    .populate("video", "title")
-    .lean();
+  await comment.populate([
+    { path: "owner", select: "username" },
+    { path: "video", select: "title" },
+  ]);
 
   return res
     .status(201)
     .json(
       new ApiResponse(
         201,
-        populatedComment,
+        comment.toObject(),
         "Comment added to the video successfully"
       )
     );
@@ -60,6 +60,36 @@ const addComment = asyncHandler(async (req, res) => {
 
 const updateComment = asyncHandler(async (req, res) => {
   // TODO: update a comment
+  const { commentId } = req.params;
+  const { content } = req.body;
+
+  if (!mongoose.isValidObjectId(commentId)) {
+    throw new ApiError(400, "Invalid Comment ID format");
+  }
+
+  if (!content || typeof content !== "string" || content.trim() === "") {
+    throw new ApiError(
+      400,
+      "Comment content is required and must be a valid string"
+    );
+  }
+
+  const comment = await Comment.findById(commentId);
+
+  if (!comment) {
+    throw new ApiError(404, "No comment found");
+  }
+
+  if (!comment.owner.equals(req.user._id)) {
+    throw new ApiError(403, "You can only update your own comments");
+  }
+
+  comment.content = content;
+  await comment.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, comment, "Comment updated successfully"));
 });
 
 const deleteComment = asyncHandler(async (req, res) => {
@@ -69,15 +99,25 @@ const deleteComment = asyncHandler(async (req, res) => {
   if (!mongoose.isValidObjectId(commentId)) {
     throw new ApiError(400, "Invalid Comment ID format");
   }
-  const comment = await Comment.findByIdAndDelete(commentId);
+  const comment = await Comment.findById(commentId);
 
   if (!comment) {
-    throw new ApiError(400, "No comment found");
+    throw new ApiError(404, "No comment found");
   }
+
+  // Proper ObjectId comparison
+  if (!comment.owner.equals(req.user._id)) {
+    throw new ApiError(403, "You can only delete your own comments");
+  }
+
+  // Now it's safe to delete
+  await comment.remove();
 
   return res
     .status(200)
-    .json(new ApiResponse(200, comment, "Comment deleted Successfully"));
+    .json(
+      new ApiResponse(200, comment.toObject(), "Comment deleted successfully")
+    );
 });
 
 export { getVideoComments, addComment, updateComment, deleteComment };
