@@ -1,4 +1,4 @@
-import mongoose, { isValidObjectId } from "mongoose";
+import mongoose from "mongoose";
 import { Tweet } from "../models/tweet.model.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -30,6 +30,27 @@ const createTweet = asyncHandler(async (req, res) => {
 
 const getUserTweets = asyncHandler(async (req, res) => {
   // TODO: get user tweets
+  const { userId } = req.params;
+
+  if (!mongoose.isValidObjectId(userId)) {
+    throw new ApiError(400, "Invalid User ID format");
+  }
+
+  const tweets = await Tweet.find({ owner: userId });
+
+  if (tweets.length < 1) {
+    throw new ApiError(404, "User by this id does not exist");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        tweets,
+        "All tweets of the specified user fetched successfully"
+      )
+    );
 });
 
 const updateTweet = asyncHandler(async (req, res) => {
