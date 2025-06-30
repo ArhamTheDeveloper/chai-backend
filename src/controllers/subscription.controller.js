@@ -89,6 +89,37 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 // controller to return channel list to which user has subscribed
 const getSubscribedChannels = asyncHandler(async (req, res) => {
   const { subscriberId } = req.params;
+
+  if (!mongoose.isValidObjectId(subscriberId)) {
+    throw new ApiError(400, "Invalid Subscriber ID format");
+  }
+
+  const user = await User.findById(subscriberId);
+
+  if (!user) {
+    throw new ApiError(404, "User does not exist");
+  }
+
+  const subscribedChannelsCount = await Subscription.countDocuments({
+    subscriber: subscriberId,
+  });
+
+  const subscribedChannels = await Subscription.find({
+    subscriber: subscriberId,
+  }).populate([
+    { path: "channel", select: "username avatar" },
+    { path: "subscriber", select: "username avatar" },
+  ]);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { subscribedChannels, subscribedChannelsCount },
+        "User's subscribed channels fetched successfully"
+      )
+    );
 });
 
 export { toggleSubscription, getUserChannelSubscribers, getSubscribedChannels };
