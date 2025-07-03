@@ -43,4 +43,8 @@ app.use("/api/v1/playlists", playlistRouter);
 app.use("/api/v1/dashboards", dashboardRouter);
 app.use("/api/v1/healthcheck", healthcheckRouter);
 
+/* ---------- global error handler (MUST come last) ---------- */
+import { errorHandler } from "./middlewares/error.middleware.js";
+app.use(errorHandler);
+
 export { app };
