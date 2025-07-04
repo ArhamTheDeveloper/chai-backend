@@ -10,17 +10,17 @@ function validateRegisterInput(req, res, next) {
   //   }
 
   // Validate fullname
-  if (!username || username.trim().length < 3) {
+  if (!fullName || fullName.trim().length < 3) {
     return res.status(400).json({
       success: false,
-      message: "Name must be at least 3 characters long.",
+      message: "Fullname must be at least 3 characters long.",
     });
   }
   // Validate username
   if (!username || username.trim().length < 3) {
     return res.status(400).json({
       success: false,
-      message: "Name must be at least 3 characters long.",
+      message: "Username must be at least 3 characters long.",
     });
   }
 
