@@ -1,4 +1,4 @@
-import { ApiError } from "../utils/ApiError";
+import { ApiError } from "../utils/ApiError.js";
 
 function validateRegisterInput(req, res, next) {
   const { name, email, password } = req.body;
