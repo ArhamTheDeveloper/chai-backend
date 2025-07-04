@@ -14,10 +14,12 @@ import {
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { validateRegisterInput } from "../validations/user.validation.js";
 
 const router = Router();
 
 router.route("/register").post(
+  validateRegisterInput,
   upload.fields([
     { name: "avatar", maxCount: 1 },
     { name: "coverImage", maxCount: 1 },

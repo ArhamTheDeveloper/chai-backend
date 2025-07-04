@@ -25,13 +25,6 @@ const registerUser = asyncHandler(async (req, res) => {
   const { username, email, fullName, password } = req.body; // req.body by default express deta hai
   //   console.log(`email: ${email} password: ${password}`);
 
-  //   validation
-  if (
-    [fullName, email, username, password].some((field) => field?.trim() === "")
-  ) {
-    throw new ApiError(400, "All fields are required");
-  } // email ki validation bhi likh sakte ho aksar production grade apps main validation ki alag se hi files hoti hain jahan se bas methods call akr lete hain
-
   //   checking if user already exists
   const existingUser = await User.findOne({
     // operators in mongoose
