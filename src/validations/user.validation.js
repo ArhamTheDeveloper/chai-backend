@@ -3,14 +3,21 @@ import { ApiError } from "../utils/ApiError.js";
 function validateRegisterInput(req, res, next) {
   const { fullName, email, username, password } = req.body;
 
-  if (
-    [fullName, email, username, password].some((field) => field?.trim() === "")
-  ) {
-    throw new ApiError(400, "All fields are required");
-  }
+  //   if (
+  //     [fullName, email, username, password].some((field) => field?.trim() === "")
+  //   ) {
+  //     throw new ApiError(400, "All fields are required");
+  //   }
 
-  // Validate name
-  if (!name || name.trim().length < 3) {
+  // Validate fullname
+  if (!username || username.trim().length < 3) {
+    return res.status(400).json({
+      success: false,
+      message: "Name must be at least 3 characters long.",
+    });
+  }
+  // Validate username
+  if (!username || username.trim().length < 3) {
     return res.status(400).json({
       success: false,
       message: "Name must be at least 3 characters long.",
