@@ -341,6 +341,31 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, video, "Publish status toggled Successfully"));
 });
 
+const handleVideoWatch = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+
+  if (!mongoose.isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid video ID format");
+  }
+
+  const video = await Video.findById(videoId);
+
+  if (!video) {
+    throw new ApiError(404, "video not found");
+  }
+
+  video.views = video.views + 1;
+  await video.save({ validateBeforeSave: false });
+
+  await User.findByIdAndUpdate(req.user._id, {
+    $addToSet: { watchHistory: videoId }, // avoids duplicates
+  });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "View added and watch history updated."));
+});
+
 export {
   getAllVideos,
   publishAVideo,
@@ -348,4 +373,5 @@ export {
   updateVideo,
   deleteVideo,
   togglePublishStatus,
+  handleVideoWatch,
 };
